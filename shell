@@ -1,0 +1,56 @@
+#!/bin/bash
+
+set -e
+
+# Variables
+PROM_VERSION="2.52.0"  # Update to latest if needed
+USER="prometheus"
+
+echo "==> Downloading Prometheus $PROM_VERSION"
+cd /tmp
+curl -s -LO https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz
+tar -xvf prometheus-${PROM_VERSION}.linux-amd64.tar.gz
+
+echo "==> Creating user and directories"
+sudo useradd --no-create-home --shell /bin/false $USER || true
+sudo mkdir -p /etc/prometheus /var/lib/prometheus
+
+echo "==> Copying binaries"
+cd prometheus-${PROM_VERSION}.linux-amd64
+sudo cp prometheus promtool /usr/local/bin/
+sudo cp -r consoles console_libraries /etc/prometheus/
+sudo cp prometheus.yml /etc/prometheus/
+
+echo "==> Setting permissions"
+sudo chown -R $USER:$USER /usr/local/bin/prometheus /usr/local/bin/promtool
+sudo chown -R $USER:$USER /etc/prometheus /var/lib/prometheus
+
+echo "==> Creating systemd service"
+cat <<EOF | sudo tee /etc/systemd/system/prometheus.service
+[Unit]
+Description=Prometheus Monitoring
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=$USER
+Group=$USER
+Type=simple
+ExecStart=/usr/local/bin/prometheus \\
+  --config.file=/etc/prometheus/prometheus.yml \\
+  --storage.tsdb.path=/var/lib/prometheus \\
+  --web.console.templates=/etc/prometheus/consoles \\
+  --web.console.libraries=/etc/prometheus/console_libraries
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "==> Reloading systemd and starting Prometheus"
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable prometheus
+sudo systemctl start prometheus
+
+echo "✅ Prometheus installation complete!"
+echo "Visit Prometheus at: http://<your-EC2-IP>:9090"
