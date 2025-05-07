@@ -1,0 +1,32 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone') {
+            steps {
+                git 'https://github.com/YOUR_USERNAME/YOUR_REPO.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo "Building the app..."
+                // Use 'npm install' or 'mvn package' or 'docker build' as per your tech stack
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo "Running tests..."
+                // Add test commands here
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "Deploying..."
+                // Use shell script, docker push, AWS CLI, etc.
+            }
+        }
+    }
+}
